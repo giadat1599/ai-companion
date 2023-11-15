@@ -1,7 +1,4 @@
 import { Redis } from "@upstash/redis";
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
-import { Pinecone } from "@pinecone-database/pinecone";
-import { PineconeStore } from "langchain/vectorstores/pinecone";
 
 export type CompanionKey = {
    companionName: string;
@@ -13,42 +10,11 @@ export type CompanionKey = {
 export class MemoryManager {
    private static instance: MemoryManager;
    private history: Redis;
-   private vectorDBClient: Pinecone;
 
    public constructor() {
       // Instantiate a new Upstash Redis Client which will automatically read the
       // env vars: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
       this.history = Redis.fromEnv();
-
-      // Instantiate a new Pinecone client, which will automatically read the
-      // env vars: PINECONE_API_KEY and PINECONE_ENVIRONMENT.
-      //---
-      // Using pinecone database (a vector database) for Pinecone vectorstore
-      // Reference: https://js.langchain.com/docs/integrations/vectorstores/pinecone
-      this.vectorDBClient = new Pinecone();
-   }
-
-   public async vectorSearch(recentChatHistory: string, companionFileName: string) {
-      const pineconeClient = this.vectorDBClient;
-      const pineconeIndex = pineconeClient.Index(process.env.PINECONE_INDEX!);
-
-      //  Using open ai embeddings to interact with embedding models
-      //  Referece: https://js.langchain.com/docs/modules/data_connection/text_embedding/
-      const vectorStore = await PineconeStore.fromExistingIndex(
-         new OpenAIEmbeddings({ openAIApiKey: process.env.OPENAI_API_KEY }),
-         {
-            pineconeIndex,
-         }
-      );
-
-      try {
-         const similarDoc = await vectorStore.similaritySearch(recentChatHistory, 3, {
-            fileName: companionFileName,
-         });
-         return similarDoc;
-      } catch (error) {
-         console.log("Failed to get vector search results", error);
-      }
    }
 
    public static async getInstance(): Promise<MemoryManager> {
